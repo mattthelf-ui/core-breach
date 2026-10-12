@@ -303,7 +303,12 @@ function edgeSpot(){for(let i=0;i<20;i++){const side=ri(0,3),u=rnd(2,MW-2)*TILE,
 function waveCleared(){G.wActive=false;G.cleared=G.wave;sfx('clear');
  for(const e of G.en)if(!e.dead){e.noLoot=1;burst(e.x,e.y,e.col,8,220);e.dead=true;}G.bul=G.bul.filter(b=>b.pl);G.drops=G.drops.filter(d=>d.k!=='pw');
  if(isBossWave(G.wave)){S.maxD=Math.max(S.maxD,G.d+1);}recBest();G.state='loot';G.loot=lootChoices();setTimeout(()=>showLoot(),350);}
-function lootChoices(){const w=G.wave,boss=isBossWave(w),out=[];for(let i=0;i<3;i++){let it;if(rollNeural(G.d+Math.floor(w/3)+(boss?4:0)))it=makeNeural();else{const kinds=IKINDS.filter(k=>!out.some(o=>o.slot===k&&k!=='arm'));it=makeItem(pick(kinds),G.d,rollRar(G.d+Math.floor(w/2),boss&&i===0?2:(w>=8?1:0)),null,w);}out.push(it);}return out;}
+// PLAYTEST SETTING (v13, Matt): from wave LOOT_PT_WAVE on, cards 1-2 are Rare or better, card 3 is Rare+ with LOOT_PT_LEG chance of Legendary (else Rare/Epic 50/50).
+const LOOT_PT_ON=true,LOOT_PT_WAVE=15,LOOT_PT_LEG=.15;
+function lootChoices(){const w=G.wave,boss=isBossWave(w),pt=LOOT_PT_ON&&w>=LOOT_PT_WAVE,out=[];for(let i=0;i<3;i++){let it;const kinds=IKINDS.filter(k=>!out.some(o=>o.slot===k&&k!=='arm'));
+ if(pt&&i===2){const r=R()<LOOT_PT_LEG?3:(R()<.5?2:1);it=makeItem(pick(kinds),G.d,r,null,w);}
+ else if(rollNeural(G.d+Math.floor(w/3)+(boss?4:0)))it=makeNeural();
+ else{const floor=boss&&i===0?2:pt?1:(w>=8?1:0);it=makeItem(pick(kinds),G.d,rollRar(G.d+Math.floor(w/2),floor),null,w);}out.push(it);}return out;}
 function takeLoot(i){const it=G.loot[i];const r=addItem(it);G.items.push(it);G.lootMsg=r?r.name:null;G.loot=null;}
 function continueWave(){G.state='play';G.bul=G.bul.filter(b=>b.pl);nextWave();}
 function recBest(){S.bestW=S.bestW||{};if(G.cleared>(S.bestW[G.d]||0)){S.bestW[G.d]=G.cleared;G.newBest=1;}saveGame();}
