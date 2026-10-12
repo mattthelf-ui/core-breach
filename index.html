@@ -184,11 +184,11 @@ function botDef(b){return b&&b.bt?(b.bt==='medic'?MEDIC:NBOTS[b.bt]):null;}
 function makeBot(bt){const m=bt==='medic';return {id:++S.nid,slot:'neural',bt,rar:m?0:4,lv:1,name:m?MEDIC.n:NBOTS[bt].n,aff:{},lock:!m};}
 function allItems(){return S.inv.concat(SLOTS.map(s=>S.eq[s]).filter(Boolean));}
 function neuralCount(){return allItems().filter(b=>b.bt&&b.bt!=='medic').length;}
-function addBot(b){if(b.bt!=='medic'&&neuralCount()>=BOT_CAP)return {scrap:scrapItem(Object.assign({},b,{lv:Math.max(3,b.lv)}))};S.inv.push(b);saveGame();return {bot:b};}
+function addBot(b){if(b.bt!=='medic'&&neuralCount()>=BOT_CAP)return {scrap:scrapItem(Object.assign({},b,{lv:Math.max(3,b.lv)}))};if(!S.eq.neural)S.eq.neural=b;else S.inv.push(b);saveGame();return {bot:b};}
 function rollNeural(d){return R()<.0025+.0006*d;}
 function makeNeural(){const owned=allItems().map(b=>b.bt),free=Object.keys(NBOTS).filter(k=>!owned.includes(k));return makeBot(pick(free.length?free:Object.keys(NBOTS)));}
 function activeBot(){const n=S.eq.neural;return n&&n.bt?n:null;}
-function ensureBots(){if(!S.medicGiven){S.medicGiven=1;S.inv.push(makeBot('medic'));S.medicNew=1;saveGame();}}
+function ensureBots(){if(!S.medicGiven){S.medicGiven=1;const m=makeBot('medic');if(!S.eq.neural)S.eq.neural=m;else S.inv.push(m);S.medicNew=1;saveGame();}}
 function loadGame(){try{S=JSON.parse(localStorage.getItem(SKEY));}catch(e){S=null;}
  if(S&&S.eq&&!S.v){const e=S.eq;S.eq={main:migrateItem(e.weapon),off:null,chip:migrateItem(e.mod),neural:null,chest:migrateItem(e.chassis),legs:null,thrust:null};S.inv=(S.inv||[]).map(migrateItem);S.v=2;S.migrated=1;saveGame();}
  if(!S||!S.eq||!S.eq.main){S={v:2,lvl:1,xp:0,inv:[],eq:{},maxD:1,selD:1,mute:false,nid:0,runs:0,kills:0,best:0,bestW:{}};
@@ -205,7 +205,8 @@ function pstats(){const E=S.eq,L=S.lvl,A={};for(const k of AFF)A[k]=0;let hp=0,a
   main:armStats(E.main,dm,rm),off:armStats(E.off,dm*.75,rm*.6)};
  const m=st.main||{wt:'blaster',k:'gun',dmg:0,rate:1,w:WEAP.blaster};st.wt=m.wt;st.dmg=m.dmg;st.rate=m.rate;return st;}
 function scrapItem(it){const xp=Math.round((6+10*it.rar*it.rar)*(1+.3*(it.lv-1)));S.xp+=xp;while(S.xp>=xpNeed(S.lvl)){S.xp-=xpNeed(S.lvl);S.lvl++;}return xp;}
-function addItem(it){if(it.bt){const r=addBot(it);return r.scrap!=null?{name:it.name+' (3 owned max, scrapped +'+r.scrap+' XP)'}:null;}S.inv.push(it);let scr=null;if(S.inv.length>INV_CAP){let lo=-1;for(let i=0;i<S.inv.length;i++){const x=S.inv[i];if(x.lock||x.bt)continue;if(lo<0||itemScore(x)*(1+x.rar)<itemScore(S.inv[lo])*(1+S.inv[lo].rar))lo=i;}
+function invCount(){return S.inv.filter(x=>!x.bt).length;}
+function addItem(it){if(it.bt){const r=addBot(it);return r.scrap!=null?{name:it.name+' (3 owned max, scrapped +'+r.scrap+' XP)'}:null;}S.inv.push(it);let scr=null;if(invCount()>INV_CAP){let lo=-1;for(let i=0;i<S.inv.length;i++){const x=S.inv[i];if(x.lock||x.bt)continue;if(lo<0||itemScore(x)*(1+x.rar)<itemScore(S.inv[lo])*(1+S.inv[lo].rar))lo=i;}
   if(lo>=0){scr=S.inv.splice(lo,1)[0];scrapItem(scr);}}saveGame();return scr;}
 const SHAPES=['wide','tall','L','cross','octagon','circle','T','ring'];
 const SHAPE_FN={
@@ -732,7 +733,7 @@ function closeGear(){if(IV.inRun&&G){IV.inRun=false;const k=G.p.hp/G.ps.hp;G.ps=
 function eqFor(it){if(!it)return null;return it.slot==='arm'?S.eq.main:S.eq[it.slot];}
 function cmpArrow(it){const d=itemScore(it)-itemScore(eqFor(it));return d>.5?'<span class="up">▲</span>':d<-.5?'<span class="dn">▼</span>':'';}
 function slotTile(s){const it=S.eq[s];const col=it?RAR[it.rar].c:'#556';return `<div class="sl" data-slot="${s}" style="border-color:${col}"><div class="sn">${SLOTN[s]}</div><div class="si" style="color:${col}">${it?it.name:'— empty —'}</div></div>`;}
-function showHangar(){const ps=pstats(),n=S.inv.length;let items=S.inv.filter(i=>(IV.f==='all'||i.slot===IV.f)&&i.rar>=IV.r);
+function showHangar(){const ps=pstats(),n=invCount();let items=S.inv.filter(i=>(IV.f==='all'||i.slot===IV.f)&&i.rar>=IV.r);
  items.sort(IV.sort==='rarity'?(a,b)=>b.rar-a.rar||itemScore(b)-itemScore(a):IV.sort==='new'?(a,b)=>b.id-a.id:(a,b)=>itemScore(b)-itemScore(a));
  const full=n>=INV_CAP?'<span style="color:#ff3d6e;font-weight:900"> FULL: the weakest unlocked item gets auto-scrapped</span>':n>=INV_CAP-5?'<span style="color:#ffd23f;font-weight:800"> almost full</span>':'';
  $('hangar').innerHTML=`<div class="row" style="width:100%;max-width:980px;justify-content:space-between"><div class="ttl" style="font-size:28px">GEAR</div><div class="st">Inventory <b>${n}/${INV_CAP}</b>${full} · Neural Link bots <b style="color:#ff4fd8">${neuralCount()}/${BOT_CAP}</b></div><span class="btn sm" id="hb">${IV.inRun?'▶ RESUME':'◀ BACK'}</span></div>
