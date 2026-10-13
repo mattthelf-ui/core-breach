@@ -312,9 +312,9 @@ function waveSpawn(){const d=G.d,w=G.wave;let alive=0;for(const e of G.en)if(!e.
   if(t==='warden'&&G.empW!==G.wave){G.empW=G.wave;if(!(G.pw.emp>0)&&!G.drops.some(d=>d.k==='pw'&&d.pw==='emp')){const s=freeSpot(G.D.arena,70);dropPw(s.x,s.y,'emp');G.empCD=6;addTxt(s.x,s.y-24,'BREAKER','#8a7dff',16,1.2);}}
   const e=spawnEnemy(t,x,y,null);e.hp=e.hpMax=e.hp*G.wMul;e.dmg*=G.wDmg;e.spawn=.7;}}
 function edgeSpot(){for(let i=0;i<20;i++){const side=ri(0,3),u=rnd(2,MW-2)*TILE,x=side===0?2*TILE:side===1?(MW-2)*TILE:u,y=side===2?2*TILE:side===3?(MH-2)*TILE:u;if(!hitsWall(x,y,20)&&Math.hypot(x-G.p.x,y-G.p.y)>200)return{x,y};}return freeSpot(G.D.arena,200);}
-function waveCleared(){G.wActive=false;G.cleared=G.wave;sfx('clear');
+function waveCleared(){if(G.state!=='play')return;G.wActive=false;G.cleared=G.wave;sfx('clear');
  for(const e of G.en)if(!e.dead){e.noLoot=1;burst(e.x,e.y,e.col,8,220);e.dead=true;}G.bul=G.bul.filter(b=>b.pl);G.drops=G.drops.filter(d=>d.k!=='pw');
- if(isBossWave(G.wave)){S.maxD=Math.max(S.maxD,G.d+1);}recBest();G.state='loot';G.loot=lootChoices();setTimeout(()=>showLoot(),350);}
+ if(isBossWave(G.wave)){S.maxD=Math.max(S.maxD,G.d+1);}recBest();G.state='loot';try{G.loot=lootChoices();}catch(err){G.loot=[0,1,2].map(()=>makeItem(pick(IKINDS),G.d,1,null,G.wave));}const g0=G;setTimeout(()=>{if(G===g0&&G.state==='loot')showLoot();},350);}
 // PLAYTEST SETTING (v13, Matt): from wave LOOT_PT_WAVE on, cards 1-2 are Rare or better, card 3 is Rare+ with LOOT_PT_LEG chance of Legendary (else Rare/Epic 50/50).
 const LOOT_PT_ON=true,LOOT_PT_WAVE=15,LOOT_PT_LEG=.15;
 function lootChoices(){const w=G.wave,boss=isBossWave(w),pt=LOOT_PT_ON&&w>=LOOT_PT_WAVE,out=[];for(let i=0;i<3;i++){let it;const kinds=IKINDS.filter(k=>!out.some(o=>o.slot===k&&k!=='arm'));
@@ -401,7 +401,7 @@ function update(dt){
  G.banner&&(G.banner.t-=dt);G.flashT-=dt;G.speedT=(G.speedT||0)-dt;
  if(G.state==='dead'||G.state==='win'){G.stT+=dt;dt*=.25;updFx(dt);if(G.stT>1.6&&!G.shown){G.shown=1;showResult();}return;}
  if(G.state!=='play')return;
- const hs=G.hitstop>0;if(hs)G.hitstop=Math.min(G.hitstop,.05)-dt;
+ if(!isFinite(p.x)||!isFinite(p.y)){p.x=G.lastOk?G.lastOk.x:G.D.start.cx;p.y=G.lastOk?G.lastOk.y:G.D.start.cy;}else G.lastOk={x:p.x,y:p.y};if(!isFinite(G.hitstop))G.hitstop=0;const hs=G.hitstop>0;if(hs)G.hitstop=Math.min(G.hitstop,.05)-dt;
  G.t+=dt;if(window.__RC&&__RC.bot)botInput();
  const ox=p.x,oy=p.y;
  // movement: velocity set straight from stick (no smoothing)
@@ -412,7 +412,11 @@ function update(dt){
  p.slowT=(p.slowT||0)-dt;if(hs)return;
  // aim + fire
  let firing=false;
- if(IN.amag>.3){let a=Math.atan2(IN.ay,IN.ax);let best=null,bs=1e9;for(const e of G.en){if(e.dead||e.spawn>0)continue;const ea=Math.atan2(e.y-p.y,e.x-p.x),df=Math.abs(((ea-a+9.42)%6.283)-3.14);const dd=Math.hypot(e.x-p.x,e.y-p.y);if(dd>520||df>.2||!los(p.x,p.y,e.x,e.y))continue;const sc=df/.2+dd/520;if(sc<bs){bs=sc;best=ea;}}
+ const AM=S.aim||'soft';
+ if(AM==='full'&&IN.amag<=.3&&!IN.fire&&[ps.main,ps.off].some(x=>x&&x.k==='gun')){let best=null,bd=520;for(const e of G.en){if(e.dead||e.spawn>0)continue;const dd=Math.hypot(e.x-p.x,e.y-p.y);if(dd<bd&&los(p.x,p.y,e.x,e.y)){bd=dd;best=e;}}if(best){p.ang=Math.atan2(best.y-p.y,best.x-p.x);firing=true;}else if(p.moving>0)p.ang=p.face;}
+ else if(IN.amag>.3&&AM==='off'){p.ang=Math.atan2(IN.ay,IN.ax);firing=true;}
+ else if(IN.amag>.3&&AM==='full'){const a=Math.atan2(IN.ay,IN.ax);let best=null,bs=1e9;for(const e of G.en){if(e.dead||e.spawn>0)continue;const ea=Math.atan2(e.y-p.y,e.x-p.x),df=Math.abs(((ea-a+9.42)%6.283)-3.14),dd=Math.hypot(e.x-p.x,e.y-p.y);if(dd>560||df>.5||!los(p.x,p.y,e.x,e.y))continue;const sc=df/.5+dd/560;if(sc<bs){bs=sc;best=ea;}}p.ang=best!=null?best:a;firing=true;}
+ else if(IN.amag>.3){let a=Math.atan2(IN.ay,IN.ax);let best=null,bs=1e9;for(const e of G.en){if(e.dead||e.spawn>0)continue;const ea=Math.atan2(e.y-p.y,e.x-p.x),df=Math.abs(((ea-a+9.42)%6.283)-3.14);const dd=Math.hypot(e.x-p.x,e.y-p.y);if(dd>520||df>.2||!los(p.x,p.y,e.x,e.y))continue;const sc=df/.2+dd/520;if(sc<bs){bs=sc;best=ea;}}
   p.ang=best!=null?a+((((best-a)+9.42)%6.283)-3.14)*.6:a;firing=true;}
  else if(IN.fire){firing=true;}
  else if(p.moving>0)p.ang=p.face;
@@ -739,7 +743,9 @@ function pdown(e){auStart();if(ui.scr!=='play'||!G||G.state!=='play')return;e.pr
  for(const s of[ui.L,ui.R]){const d=Math.hypot(x-s.x,y-s.y);if(s.id==null&&d<ui.grab){s.id=e.pointerId;s.t0=now;s.far=d>ui.ring?1:0;stickSet(s,x,y,now);applyIn();try{cv.setPointerCapture(e.pointerId);}catch(_){ }return;}}}
 function pmove(e){if(ui.scr!=='play')return;const now=performance.now();for(const s of[ui.L,ui.R])if(s.id===e.pointerId){stickSet(s,e.clientX,e.clientY,now);applyIn();}}
 function pup(e){for(const s of[ui.L,ui.R])if(s.id===e.pointerId){s.id=null;s.kx=s.ky=0;applyIn();}if(ui.D.id===e.pointerId)ui.D.id=null;}
-cv.addEventListener('pointerdown',pdown,{passive:false});cv.addEventListener('pointermove',pmove,{passive:true});cv.addEventListener('pointerup',pup);cv.addEventListener('pointercancel',pup);
+cv.addEventListener('pointerdown',pdown,{passive:false});cv.addEventListener('pointermove',pmove,{passive:true});cv.addEventListener('pointerup',pup);cv.addEventListener('pointercancel',pup);cv.addEventListener('lostpointercapture',pup);
+function resetSticks(){for(const s of[ui.L,ui.R]){s.id=null;s.kx=s.ky=0;}ui.D.id=null;IN.mx=IN.my=0;IN.amag=0;}
+document.addEventListener('touchend',e=>{if(e.touches.length===0)resetSticks();},{passive:true});document.addEventListener('touchcancel',e=>{if(e.touches.length===0)resetSticks();},{passive:true});
 document.addEventListener('pointerdown',()=>auStart(),{capture:true});
 document.addEventListener('contextmenu',e=>e.preventDefault());
 // keyboard + mouse for desktop testing
@@ -748,7 +754,7 @@ function kbApply(){if(ui.L.id!=null)return;let x=(KB.KeyD||KB.ArrowRight?1:0)-(K
 let MS={x:0,y:0,down:0};cv.addEventListener('mousemove',e=>{MS.x=e.clientX;MS.y=e.clientY;});cv.addEventListener('mousedown',e=>{if(ui.R.id==null&&ui.L.id==null&&!(Math.hypot(e.clientX-ui.D.x,e.clientY-ui.D.y)<ui.D.r+12))MS.down=1;});addEventListener('mouseup',()=>MS.down=0);
 // ---------- DOM screens ----------
 const $=id=>document.getElementById(id);
-function show(id){ui.scr=id;['hub','hangar','result','pause','loot'].forEach(s=>$(s).classList.toggle('on',s===id));}
+function show(id){if(id==='play'||ui.scr==='play')resetSticks();ui.scr=id;['hub','hangar','result','pause','loot'].forEach(s=>$(s).classList.toggle('on',s===id));}
 const SLN={weapon:'WEAPON',chassis:'CHASSIS',mod:'MOD'};
 function hubHTML(){const ps=pstats(),need=xpNeed(S.lvl);S.selD=clamp(S.selD||1,1,S.maxD);
  return `<div class="ttl">CORE BREACH</div><div class="sub">ROBO DUNGEON CRAWLER</div>
@@ -757,12 +763,13 @@ function hubHTML(){const ps=pstats(),need=xpNeed(S.lvl);S.selD=clamp(S.selD||1,1
  <div class="st">HP <b>${ps.hp}</b> · DMG <b>${(ps.main?ps.main.dmg:0).toFixed(1)}</b> · Armor <b>${Math.round(ps.armor*100)}%</b> · Crit <b>${Math.round(ps.crit*100)}%</b></div>
  <div class="st" style="color:${S.eq.main?RAR[S.eq.main.rar].c:'#fff'}">${S.eq.main?S.eq.main.name:'No Main Arm'}${S.eq.off?' + '+S.eq.off.name:''}</div>${S.migrated?'<div class="st" style="color:#7affd6">Your old gear was moved into the new slots.</div>':''}${S.medicNew?'<div class="st" style="color:#9dff5a;font-weight:800">🎁 First login reward: Standard Medic Bot is in your inventory (GEAR → Neural).</div>':''}</div>
  <div class="row"><span class="btn gh sm" id="dm">◀</span><div class="pn" style="text-align:center;min-width:130px"><div class="st">DEPTH</div><b style="font-size:22px;font-style:italic">SECTOR ${S.selD}</b><div class="st">Best wave: ${(S.bestW&&S.bestW[S.selD])||0}${S.selD>=S.maxD?' · beat wave 5 to unlock next':''}</div></div><span class="btn gh sm" id="dp">▶</span></div>
- <div class="row"><span class="btn pk" id="go">DEPLOY ▶</span><span class="btn" id="hg">GEAR</span><span class="btn gh sm" id="mu">${S.mute?'🔇':'🔊'}</span></div>
+ <div class="row"><span class="btn pk" id="go">DEPLOY ▶</span><span class="btn" id="hg">GEAR</span><span class="btn gh sm" id="am">AIM: ${(S.aim||'soft').toUpperCase()}</span><span class="btn gh sm" id="mu">${S.mute?'🔇':'🔊'}</span></div>
  <div class="st" style="opacity:.7">Timed waves · pick 1 of 3 loot after each · guardian every 5th wave · extract after it for a bonus</div>`;}
 function showHub(){G=null;auTrack('hub');$('hub').innerHTML=hubHTML();show('hub');drawDoll('hubc');
  $('dm').onclick=()=>{S.selD=Math.max(1,S.selD-1);sfx('click');showHub();};$('dp').onclick=()=>{S.selD=Math.min(S.maxD,S.selD+1);sfx('click');showHub();};
  $('go').onclick=()=>{auStart();sfx('click');startPlay(S.selD);};$('hg').onclick=()=>{sfx('click');showHangar();};
- $('mu').onclick=()=>{S.mute=!S.mute;auMute(S.mute);saveGame();showHub();};}
+ $('mu').onclick=()=>{S.mute=!S.mute;auMute(S.mute);saveGame();showHub();};$('am').onclick=()=>{cycleAim();showHub();};}
+function cycleAim(){S.aim={off:'soft',soft:'full',full:'off'}[S.aim||'soft'];saveGame();sfx('click');}
 function startPlay(d){for(const s of[ui.L,ui.R]){s.id=null;s.kx=s.ky=0;}applyIn();startRun(d);show('play');}
 // ---------- GEAR: paper doll + inventory (Skyrim-style slots) ----------
 const IV={f:'all',r:0,sort:'power',sel:null,inRun:false};
@@ -816,8 +823,8 @@ function showResult(){const win=G.state==='win';const its=G.items.slice().sort((
  <div class="row"><span class="btn yl" id="rr">RETRY ↻</span><span class="btn pk" id="rh">TO HUB</span><span class="btn" id="rg">GEAR</span></div>`;show('result');
  const rd=G.d;$('rr').onclick=()=>{sfx('click');startPlay(rd);};$('rh').onclick=()=>{sfx('click');showHub();};$('rg').onclick=()=>{sfx('click');G=null;showHangar();};}
 function showPause(){if(!G||G.state!=='play')return;G.state='pause';for(const s of[ui.L,ui.R]){s.id=null;s.kx=s.ky=0;}applyIn();
- $('pause').innerHTML=`<div class="ttl" style="font-size:36px">PAUSED</div><div class="row"><span class="btn pk" id="pr">RESUME</span><span class="btn gh" id="pm">${S.mute?'SOUND ON':'MUTE'}</span><span class="btn gh" id="pq">ABANDON RUN</span></div><div class="st">Loot and XP picked up so far are already saved.</div>`;show('pause');
- $('pr').onclick=()=>{G.state='play';show('play');};$('pm').onclick=()=>{S.mute=!S.mute;auMute(S.mute);saveGame();G.state='play';showPause();};$('pq').onclick=()=>{showHub();};}
+ $('pause').innerHTML=`<div class="ttl" style="font-size:36px">PAUSED</div><div class="row"><span class="btn pk" id="pr">RESUME</span><span class="btn gh" id="pm">${S.mute?'SOUND ON':'MUTE'}</span><span class="btn gh" id="pa">AIM: ${(S.aim||'soft').toUpperCase()}</span><span class="btn gh" id="pq">ABANDON RUN</span></div><div class="st">Loot and XP picked up so far are already saved.</div>`;show('pause');
+ $('pr').onclick=()=>{G.state='play';show('play');};$('pm').onclick=()=>{S.mute=!S.mute;auMute(S.mute);saveGame();G.state='play';showPause();};$('pq').onclick=()=>{showHub();};$('pa').onclick=()=>{cycleAim();G.state='play';showPause();};}
 // ---------- loop ----------
 let lastT=0,fAcc=[],lowCheck=0;
 function frame(ts){requestAnimationFrame(frame);const now=ts||performance.now();let dt=lastT?(now-lastT)/1000:1/60;lastT=now;if(dt>1/20)dt=1/20;
@@ -825,7 +832,7 @@ function frame(ts){requestAnimationFrame(frame);const now=ts||performance.now();
  if(ui.scr==='play')applyIn();
  if(ui.scr==='play'&&ui.L.id==null&&!KB.none){if(MS.down&&G){IN.ax=(MS.x-W/2);IN.ay=(MS.y-H/2);IN.amag=1;}else if(ui.R.id==null)IN.amag=0;}
  if(G){const sh=G.D.shape,zk=((sh==='tall'&&W>H)||(sh==='wide'&&H>W))?.85:1;VS=VSB*zk;}
- if(G&&(ui.scr==='play'||ui.scr==='result'))update(dt);
+ if(G&&(ui.scr==='play'||ui.scr==='result')){try{update(dt);}catch(err){(window.__errs=window.__errs||[]).push(String(err&&err.stack||err));}}
  render();}
 Q.low=(navigator.hardwareConcurrency||8)<=4||(navigator.deviceMemory||8)<=3;if(Q.low)Q.maxParts=120;
 loadGame();AU.muted=!!S.mute;layout();showHub();requestAnimationFrame(frame);
