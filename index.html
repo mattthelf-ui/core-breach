@@ -314,7 +314,7 @@ function waveSpawn(){const d=G.d,w=G.wave;let alive=0;for(const e of G.en)if(!e.
 function edgeSpot(){for(let i=0;i<20;i++){const side=ri(0,3),u=rnd(2,MW-2)*TILE,x=side===0?2*TILE:side===1?(MW-2)*TILE:u,y=side===2?2*TILE:side===3?(MH-2)*TILE:u;if(!hitsWall(x,y,20)&&Math.hypot(x-G.p.x,y-G.p.y)>200)return{x,y};}return freeSpot(G.D.arena,200);}
 function waveCleared(){if(G.state!=='play')return;G.wActive=false;G.cleared=G.wave;sfx('clear');
  for(const e of G.en)if(!e.dead){e.noLoot=1;burst(e.x,e.y,e.col,8,220);e.dead=true;}G.bul=G.bul.filter(b=>b.pl);G.drops=G.drops.filter(d=>d.k!=='pw');
- if(isBossWave(G.wave)){S.maxD=Math.max(S.maxD,G.d+1);}recBest();G.state='loot';try{G.loot=lootChoices();}catch(err){G.loot=[0,1,2].map(()=>makeItem(pick(IKINDS),G.d,1,null,G.wave));}const g0=G;setTimeout(()=>{if(G===g0&&G.state==='loot')showLoot();},350);}
+ if(isBossWave(G.wave)){S.maxD=Math.max(S.maxD,G.d+1);}recBest();G.state='loot';try{G.loot=lootChoices();}catch(err){G.loot=[0,1,2].map(()=>makeItem(pick(IKINDS),G.d,1,null,G.wave));}G.lootAt=.35;dlog('waveCleared w='+G.wave);}
 // PLAYTEST SETTING (v13, Matt): from wave LOOT_PT_WAVE on, cards 1-2 are Rare or better, card 3 is Rare+ with LOOT_PT_LEG chance of Legendary (else Rare/Epic 50/50).
 const LOOT_PT_ON=true,LOOT_PT_WAVE=15,LOOT_PT_LEG=.15;
 function lootChoices(){const w=G.wave,boss=isBossWave(w),pt=LOOT_PT_ON&&w>=LOOT_PT_WAVE,out=[];for(let i=0;i<3;i++){let it;const kinds=IKINDS.filter(k=>!out.some(o=>o.slot===k&&k!=='arm'));
@@ -322,7 +322,7 @@ function lootChoices(){const w=G.wave,boss=isBossWave(w),pt=LOOT_PT_ON&&w>=LOOT_
  else if(rollNeural(G.d+Math.floor(w/3)+(boss?4:0)))it=makeNeural();
  else{const floor=boss&&i===0?2:pt?1:(w>=8?1:0);it=makeItem(pick(kinds),G.d,rollRar(G.d+Math.floor(w/2),floor),null,w);}out.push(it);}return out;}
 function takeLoot(i){const it=G.loot[i];const r=addItem(it);G.items.push(it);G.lootMsg=r?r.name:null;G.loot=null;}
-function continueWave(){G.state='play';G.bul=G.bul.filter(b=>b.pl);nextWave();}
+function continueWave(){if(!G||G.state!=='loot'||G.loot){dlog('continueWave blocked '+(G&&G.state));if(G&&G.state==='loot'&&G.loot)return;if(!G||G.state!=='loot')return;}dlog('continueWave');G.state='play';G.bul=G.bul.filter(b=>b.pl);nextWave();}
 function recBest(){S.bestW=S.bestW||{};if(G.cleared>(S.bestW[G.d]||0)){S.bestW[G.d]=G.cleared;G.newBest=1;}saveGame();}
 const BOSS_HP=1625;// v12: was 650 (x2.5)
 function spawnBoss(){G.bossOn=true;const pd=G.D.pads.slice().sort((a,b)=>Math.hypot(b.x-G.p.x,b.y-G.p.y)-Math.hypot(a.x-G.p.x,a.y-G.p.y))[0];
@@ -699,7 +699,6 @@ function drawHUD(t){const c=cx,p=G.p,L=SAFE.l+10,T=SAFE.t+8;
  {const M=ui.M,mk=Math.max(0,p.mcd||0)/.45;const sw=[G.ps.main,G.ps.off].find(a=>a&&a.k==='melee');const mc=sw?sw.w.col:BASIC_SWORD.col;c.fillStyle='rgba(5,6,10,.7)';c.strokeStyle=mc;c.lineWidth=4;c.beginPath();c.arc(M.x,M.y,M.r,0,6.283);c.fill();c.stroke();
   c.save();c.translate(M.x,M.y);c.rotate(-.8);c.lineCap='round';c.strokeStyle=mc;c.globalAlpha=.5;c.lineWidth=9;c.beginPath();c.moveTo(-4,0);c.lineTo(M.r*.62,0);c.stroke();c.globalAlpha=1;c.strokeStyle='#fff';c.lineWidth=3;c.stroke();c.strokeStyle='#8a94bf';c.lineWidth=6;c.beginPath();c.moveTo(-M.r*.55,0);c.lineTo(-6,0);c.stroke();c.restore();c.lineCap='butt';
   if((p.mcd||0)>0){c.fillStyle='rgba(5,6,10,.45)';c.beginPath();c.arc(M.x,M.y,M.r,0,6.283);c.fill();}bigText('SWORD',M.x,M.y+M.r*.55,10,'#fff');}
- if(breather()){const Gb=ui.GB;c.fillStyle='#ffd23f';c.strokeStyle=INK;c.lineWidth=3;c.beginPath();c.arc(Gb.x,Gb.y,Gb.r,0,6.283);c.fill();c.stroke();bigText('GEAR',Gb.x,Gb.y,12,'#fff');}
  const d=ui.D,cd=Math.max(0,p.dcd)/1.3;c.fillStyle=cd>0?'rgba(40,40,60,.8)':'#ffd23f';c.strokeStyle=INK;c.lineWidth=3;c.beginPath();c.arc(d.x,d.y,d.r,0,6.283);c.fill();c.stroke();
  if(cd>0){c.fillStyle='rgba(255,210,63,.6)';c.beginPath();c.moveTo(d.x,d.y);c.arc(d.x,d.y,d.r,-1.57,-1.57+6.283*(1-cd));c.fill();}bigText('DASH',d.x,d.y,12,cd>0?'#aaa':'#fff');
  // banner
@@ -715,9 +714,11 @@ function txtImg(s,col,sz){const key=s+'|'+col+'|'+sz;let im=TXC.get(key);if(im)r
  const k=Q.dpr,cv2=document.createElement('canvas'),c2=cv2.getContext('2d');c2.font='italic 900 '+sz+'px system-ui,sans-serif';const w=c2.measureText(s).width+sz;cv2.width=Math.ceil(w*k);cv2.height=Math.ceil(sz*1.8*k);
  c2.scale(k,k);c2.font='italic 900 '+sz+'px system-ui,sans-serif';c2.textAlign='center';c2.textBaseline='middle';c2.lineJoin='round';c2.lineWidth=Math.max(3,sz/5);c2.strokeStyle=INK;c2.strokeText(s,w/2,sz*.9);c2.fillStyle=col;c2.fillText(s,w/2,sz*.9);cv2.k=k;TXC.set(key,cv2);return cv2;}
 
-function breather(){return false;}
+
+const VER='v16';
 let VSB=1;
 // ---------- input, layout, screens, loop ----------
+const DLOG=[];function dlog(s){DLOG.push((performance.now()/1000).toFixed(2)+' '+s);if(DLOG.length>50)DLOG.shift();}
 const ui={scr:'hub',L:{x:0,y:0,kx:0,ky:0,id:null,t0:0,far:0},R:{x:0,y:0,kx:0,ky:0,id:null,t0:0,far:0},D:{x:0,y:0,r:34,id:null},M:{x:0,y:0,r:36},GB:{x:0,y:0,r:30},ring:54,grab:84,btns:[],fps:60,lastIn:0};
 function layout(){W=innerWidth;H=innerHeight;const sa=getComputedStyle(document.getElementById('sa'));SAFE={t:parseFloat(sa.paddingTop)||0,r:parseFloat(sa.paddingRight)||0,b:parseFloat(sa.paddingBottom)||0,l:parseFloat(sa.paddingLeft)||0};
  Q.dpr=Math.min(window.devicePixelRatio||1,Q.low?1.5:2);const port0=ui.port;ui.port=H>W;if(port0!=null&&port0!==ui.port)autoPause();cv.width=Math.round(W*Q.dpr);cv.height=Math.round(H*Q.dpr);
@@ -735,26 +736,27 @@ function applyIn(){const now=performance.now(),l=stickOut(ui.L,now),r=stickOut(u
  if(ui.R.id!=null){IN.ax=r[0];IN.ay=r[1];IN.amag=r[2];}else if(ui.R.was){IN.amag=0;}ui.R.was=ui.R.id!=null;ui.lastIn=now;}
 function autoPause(){if(ui.scr==='play'&&G&&G.state==='play')showPause();else for(const s of[ui.L,ui.R]){s.id=null;s.kx=s.ky=0;}}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)autoPause();});addEventListener('blur',autoPause);addEventListener('orientationchange',autoPause);
-function pdown(e){auStart();if(ui.scr!=='play'||!G||G.state!=='play')return;e.preventDefault();const x=e.clientX,y=e.clientY,now=performance.now();
+function pdown(e){auStart();dlog('pdown '+e.pointerId+' '+e.pointerType+' '+Math.round(e.clientX)+','+Math.round(e.clientY)+' scr='+ui.scr+' st='+(G&&G.state));if(ui.scr!=='play'||!G||G.state!=='play')return;e.preventDefault();const x=e.clientX,y=e.clientY,now=performance.now();
  for(const b of ui.btns)if(Math.hypot(x-b.x,y-b.y)<b.r+10){if(b.id==='pause')showPause();else{S.mute=!S.mute;auMute(S.mute);saveGame();}return;}
  if(Math.hypot(x-ui.M.x,y-ui.M.y)<ui.M.r+4){IN.melee=true;return;}
- if(breather()&&Math.hypot(x-ui.GB.x,y-ui.GB.y)<ui.GB.r+6){openGearInRun();return;}
  if(Math.hypot(x-ui.D.x,y-ui.D.y)<ui.D.r+4){IN.dash=true;ui.D.id=e.pointerId;return;}
- for(const s of[ui.L,ui.R]){const d=Math.hypot(x-s.x,y-s.y);if(s.id==null&&d<ui.grab){s.id=e.pointerId;s.t0=now;s.far=d>ui.ring?1:0;stickSet(s,x,y,now);applyIn();try{cv.setPointerCapture(e.pointerId);}catch(_){ }return;}}}
-function pmove(e){if(ui.scr!=='play')return;const now=performance.now();for(const s of[ui.L,ui.R])if(s.id===e.pointerId){stickSet(s,e.clientX,e.clientY,now);applyIn();}}
-function pup(e){for(const s of[ui.L,ui.R])if(s.id===e.pointerId){s.id=null;s.kx=s.ky=0;applyIn();}if(ui.D.id===e.pointerId)ui.D.id=null;}
+ for(const s of[ui.L,ui.R]){const d=Math.hypot(x-s.x,y-s.y);if(s.id==null&&d<ui.grab){s.id=e.pointerId;s.t0=now;s.lm=now;s.far=d>ui.ring?1:0;stickSet(s,x,y,now);applyIn();try{cv.setPointerCapture(e.pointerId);}catch(_){ }return;}}}
+function pmove(e){if(ui.scr!=='play')return;const now=performance.now();for(const s of[ui.L,ui.R])if(s.id===e.pointerId){s.lm=now;stickSet(s,e.clientX,e.clientY,now);applyIn();}}
+function pup(e){dlog(e.type+' '+e.pointerId);for(const s of[ui.L,ui.R])if(s.id===e.pointerId){s.id=null;s.kx=s.ky=0;applyIn();}if(ui.D.id===e.pointerId)ui.D.id=null;}
 cv.addEventListener('pointerdown',pdown,{passive:false});cv.addEventListener('pointermove',pmove,{passive:true});cv.addEventListener('pointerup',pup);cv.addEventListener('pointercancel',pup);cv.addEventListener('lostpointercapture',pup);
-function resetSticks(){for(const s of[ui.L,ui.R]){s.id=null;s.kx=s.ky=0;}ui.D.id=null;IN.mx=IN.my=0;IN.amag=0;}
-document.addEventListener('touchend',e=>{if(e.touches.length===0)resetSticks();},{passive:true});document.addEventListener('touchcancel',e=>{if(e.touches.length===0)resetSticks();},{passive:true});
+function resetSticks(){dlog('resetSticks');for(const s of[ui.L,ui.R]){s.id=null;s.kx=s.ky=0;}ui.D.id=null;IN.mx=IN.my=0;IN.amag=0;}
+const ACT=new Set();cv.addEventListener('pointerdown',e=>ACT.add(e.pointerId),{capture:true});for(const ev of['pointerup','pointercancel'])addEventListener(ev,e=>ACT.delete(e.pointerId),{capture:true});let nTouch=0;
+document.addEventListener('touchstart',e=>{nTouch=e.touches.length;},{passive:true,capture:true});document.addEventListener('touchend',e=>{nTouch=e.touches.length;if(e.touches.length===0){if(ui.L.id!=null||ui.R.id!=null)dlog('touchend reset');resetSticks();}},{passive:true});document.addEventListener('touchcancel',e=>{nTouch=e.touches.length;if(e.touches.length===0)resetSticks();},{passive:true});
 document.addEventListener('pointerdown',()=>auStart(),{capture:true});
 document.addEventListener('contextmenu',e=>e.preventDefault());
 // keyboard + mouse for desktop testing
-const KB={};addEventListener('keydown',e=>{KB[e.code]=1;if(e.code==='Space')IN.dash=true;if(e.code==='KeyF'||e.code==='KeyJ')IN.melee=true;if(e.code==='KeyG'&&breather())openGearInRun();if(e.code==='Escape'&&ui.scr==='play')showPause();kbApply();});addEventListener('keyup',e=>{KB[e.code]=0;kbApply();});
+const KB={};addEventListener('keydown',e=>{KB[e.code]=1;if(e.code==='Space')IN.dash=true;if(e.code==='KeyF'||e.code==='KeyJ')IN.melee=true;if(e.code==='Escape'&&ui.scr==='play')showPause();kbApply();});addEventListener('keyup',e=>{KB[e.code]=0;kbApply();});
 function kbApply(){if(ui.L.id!=null)return;let x=(KB.KeyD||KB.ArrowRight?1:0)-(KB.KeyA||KB.ArrowLeft?1:0),y=(KB.KeyS||KB.ArrowDown?1:0)-(KB.KeyW||KB.ArrowUp?1:0);const m=Math.hypot(x,y)||1;IN.mx=x/m;IN.my=y/m;}
-let MS={x:0,y:0,down:0};cv.addEventListener('mousemove',e=>{MS.x=e.clientX;MS.y=e.clientY;});cv.addEventListener('mousedown',e=>{if(ui.R.id==null&&ui.L.id==null&&!(Math.hypot(e.clientX-ui.D.x,e.clientY-ui.D.y)<ui.D.r+12))MS.down=1;});addEventListener('mouseup',()=>MS.down=0);
+let MS={x:0,y:0,down:0};const COARSE=matchMedia('(pointer:coarse)').matches;let lastTouch=0;document.addEventListener('touchstart',()=>{lastTouch=performance.now();},{passive:true,capture:true});const mouseOk=()=>!COARSE&&performance.now()-lastTouch>800;
+cv.addEventListener('mousemove',e=>{if(!mouseOk())return;MS.x=e.clientX;MS.y=e.clientY;});cv.addEventListener('mousedown',e=>{if(!mouseOk())return;if(ui.R.id==null&&ui.L.id==null&&!(Math.hypot(e.clientX-ui.D.x,e.clientY-ui.D.y)<ui.D.r+12)&&!(Math.hypot(e.clientX-ui.M.x,e.clientY-ui.M.y)<ui.M.r+12))MS.down=1;});addEventListener('mouseup',()=>MS.down=0);
 // ---------- DOM screens ----------
 const $=id=>document.getElementById(id);
-function show(id){if(id==='play'||ui.scr==='play')resetSticks();ui.scr=id;['hub','hangar','result','pause','loot'].forEach(s=>$(s).classList.toggle('on',s===id));}
+function show(id){dlog('show '+id+(G?' st='+G.state+' w='+G.wave:''));if(id==='play'||ui.scr==='play')resetSticks();ui.scr=id;['hub','hangar','result','pause','loot'].forEach(s=>$(s).classList.toggle('on',s===id));}
 const SLN={weapon:'WEAPON',chassis:'CHASSIS',mod:'MOD'};
 function hubHTML(){const ps=pstats(),need=xpNeed(S.lvl);S.selD=clamp(S.selD||1,1,S.maxD);
  return `<div class="ttl">CORE BREACH</div><div class="sub">ROBO DUNGEON CRAWLER</div>
@@ -764,8 +766,8 @@ function hubHTML(){const ps=pstats(),need=xpNeed(S.lvl);S.selD=clamp(S.selD||1,1
  <div class="st" style="color:${S.eq.main?RAR[S.eq.main.rar].c:'#fff'}">${S.eq.main?S.eq.main.name:'No Main Arm'}${S.eq.off?' + '+S.eq.off.name:''}</div>${S.migrated?'<div class="st" style="color:#7affd6">Your old gear was moved into the new slots.</div>':''}${S.medicNew?'<div class="st" style="color:#9dff5a;font-weight:800">🎁 First login reward: Standard Medic Bot is in your inventory (GEAR → Neural).</div>':''}</div>
  <div class="row"><span class="btn gh sm" id="dm">◀</span><div class="pn" style="text-align:center;min-width:130px"><div class="st">DEPTH</div><b style="font-size:22px;font-style:italic">SECTOR ${S.selD}</b><div class="st">Best wave: ${(S.bestW&&S.bestW[S.selD])||0}${S.selD>=S.maxD?' · beat wave 5 to unlock next':''}</div></div><span class="btn gh sm" id="dp">▶</span></div>
  <div class="row"><span class="btn pk" id="go">DEPLOY ▶</span><span class="btn" id="hg">GEAR</span><span class="btn gh sm" id="am">AIM: ${(S.aim||'soft').toUpperCase()}</span><span class="btn gh sm" id="mu">${S.mute?'🔇':'🔊'}</span></div>
- <div class="st" style="opacity:.7">Timed waves · pick 1 of 3 loot after each · guardian every 5th wave · extract after it for a bonus</div>`;}
-function showHub(){G=null;auTrack('hub');$('hub').innerHTML=hubHTML();show('hub');drawDoll('hubc');
+ <div class="st" style="opacity:.7"><span id="verl" style="padding:6px">${VER}</span> · Timed waves · pick 1 of 3 loot after each · guardian every 5th wave · extract after it for a bonus</div>`;}
+function showHub(){G=null;auTrack('hub');$('hub').innerHTML=hubHTML();show('hub');drawDoll('hubc');bindVer();
  $('dm').onclick=()=>{S.selD=Math.max(1,S.selD-1);sfx('click');showHub();};$('dp').onclick=()=>{S.selD=Math.min(S.maxD,S.selD+1);sfx('click');showHub();};
  $('go').onclick=()=>{auStart();sfx('click');startPlay(S.selD);};$('hg').onclick=()=>{sfx('click');showHangar();};
  $('mu').onclick=()=>{S.mute=!S.mute;auMute(S.mute);saveGame();showHub();};$('am').onclick=()=>{cycleAim();showHub();};}
@@ -774,9 +776,8 @@ function startPlay(d){for(const s of[ui.L,ui.R]){s.id=null;s.kx=s.ky=0;}applyIn(
 // ---------- GEAR: paper doll + inventory (Skyrim-style slots) ----------
 const IV={f:'all',r:0,sort:'power',sel:null,inRun:false};
 const FILT=[['all','All'],['arm','Arms'],['chip','Chip'],['neural','Neural'],['chest','Chest'],['legs','Legs'],['thrust','Thrust']];
-function openGearInRun(){if(!breather())return;G.state='inv';for(const s of[ui.L,ui.R]){s.id=null;s.kx=s.ky=0;}applyIn();IV.inRun=true;showHangar();}
 function closeGear(){if(IV.inRun&&G){IV.inRun=false;const k=G.p.hp/G.ps.hp;G.ps=pstats();G.p.hp=Math.max(1,Math.round(G.ps.hp*k));show('play');continueWave();}else showHub();}
-function showLoot(){if(!G||!G.loot)return;for(const s of[ui.L,ui.R]){s.id=null;s.kx=s.ky=0;}applyIn();const w=G.wave;
+function showLoot(){if(!G||!G.loot||ui.scr==='loot')return;G.lootAt=1e9;for(const s of[ui.L,ui.R]){s.id=null;s.kx=s.ky=0;}applyIn();const w=G.wave;
  $('loot').innerHTML=`<div class="ttl" style="font-size:32px">WAVE ${w} SURVIVED</div><div class="sub">CHOOSE YOUR LOOT</div><div class="lc">${G.loot.map((it,i)=>`<div class="lcard" data-pick="${i}" style="border-color:${RAR[it.rar].c}"><div class="nm" style="color:${RAR[it.rar].c}">${it.name}</div><div class="ds"><b style="color:${RAR[it.rar].c}">${RAR[it.rar].n}</b> · ${ITYPE[it.slot]}${it.bt?'':' · Lv'+it.lv} ${cmpArrow(it)}</div><div class="ds">${itemDesc(it)}</div></div>`).join('')}</div>`;show('loot');sfx('level');
  $('loot').querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{if(!G||!G.loot)return;sfx('item');takeLoot(+b.dataset.pick);IV.inRun=true;IV.f='all';showHangar();});}
 function extractRun(){IV.inRun=false;G.state='win';G.stT=0;sfx('level');endRun(true);show('play');}
@@ -829,12 +830,18 @@ function showPause(){if(!G||G.state!=='play')return;G.state='pause';for(const s 
 let lastT=0,fAcc=[],lowCheck=0;
 function frame(ts){requestAnimationFrame(frame);const now=ts||performance.now();let dt=lastT?(now-lastT)/1000:1/60;lastT=now;if(dt>1/20)dt=1/20;
  fAcc.push(dt);if(fAcc.length>60)fAcc.shift();if(fAcc.length===60){const a=fAcc.reduce((x,y)=>x+y)/60;ui.fps=1/a;if(ui.scr==='play'&&!Q.low&&a>1/45&&++lowCheck>90){Q.low=true;Q.maxParts=120;layout();}}
- if(ui.scr==='play')applyIn();
- if(ui.scr==='play'&&ui.L.id==null&&!KB.none){if(MS.down&&G){IN.ax=(MS.x-W/2);IN.ay=(MS.y-H/2);IN.amag=1;}else if(ui.R.id==null)IN.amag=0;}
+ if(ui.scr==='play'){for(const s of[ui.L,ui.R])if(s.id!=null&&now-(s.lm||0)>1500&&!ACT.has(s.id)){dlog('watchdog clear '+s.id);s.id=null;s.kx=s.ky=0;}if((ui.L.id!=null||ui.R.id!=null)&&COARSE&&nTouch===0&&now-lastTouch>300){dlog('watchdog no-touch');resetSticks();}applyIn();}
+ if(G&&G.state==='loot'&&G.loot&&ui.scr==='play'&&(G.lootAt-=dt)<=0)showLoot();
+ if(ui.scr==='play'&&ui.L.id==null&&!KB.none){if(MS.down&&G&&mouseOk()){IN.ax=(MS.x-W/2);IN.ay=(MS.y-H/2);IN.amag=1;}else if(ui.R.id==null)IN.amag=0;}
  if(G){const sh=G.D.shape,zk=((sh==='tall'&&W>H)||(sh==='wide'&&H>W))?.85:1;VS=VSB*zk;}
  if(G&&(ui.scr==='play'||ui.scr==='result')){try{update(dt);}catch(err){(window.__errs=window.__errs||[]).push(String(err&&err.stack||err));}}
  render();}
 Q.low=(navigator.hardwareConcurrency||8)<=4||(navigator.deviceMemory||8)<=3;if(Q.low)Q.maxParts=120;
 loadGame();AU.muted=!!S.mute;layout();showHub();requestAnimationFrame(frame);
-window.__RC={get G(){return G},get S(){return S},IN,ui,Q,start:startPlay,update,render,layout,toHub:showHub,hangar:showHangar,openGearInRun,closeGear,IV,genDungeon,bot:false,god:false,showFps:false,applyIn};
+window.__RC={get G(){return G},get S(){return S},IN,ui,Q,start:startPlay,update,render,layout,toHub:showHub,hangar:showHangar,closeGear,IV,genDungeon,bot:false,god:false,showFps:false,applyIn};
+
+// hidden debug log: long-press the version label on the hub
+function dbgOpen(){$('det2')&&$('det2').remove();const d=document.createElement('div');d.id='det2';d.className='det on';d.innerHTML=`<div class="pn dbox"><b>DEBUG LOG (${VER})</b><pre id="dbgp" style="font-size:10px;white-space:pre-wrap;user-select:text;-webkit-user-select:text">${DLOG.join('\n')||'(empty)'}\nscr=${ui.scr} st=${G&&G.state} L=${ui.L.id} R=${ui.R.id} touches=${nTouch} errs=${(window.__errs||[]).length}\n${(window.__errs||[]).slice(-3).join('\n')}</pre><span class="btn sm" id="dbgc">COPY</span><span class="btn sm gh" id="dbgx">CLOSE</span></div>`;document.body.appendChild(d);
+ $('dbgx').onclick=()=>d.remove();$('dbgc').onclick=()=>{try{navigator.clipboard.writeText($('dbgp').innerText);}catch(e){}};}
+function bindVer(){const v=$('verl');if(!v)return;let t=null;v.addEventListener('pointerdown',()=>{t=setTimeout(dbgOpen,700);});['pointerup','pointerleave','pointercancel'].forEach(ev=>v.addEventListener(ev,()=>clearTimeout(t)));}
 </script></body></html>
